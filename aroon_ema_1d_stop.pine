@@ -1,0 +1,104 @@
+//@version=6
+// Strategia "Aroon + EMA" — sistema 1D: solo long, filtro BTC, STOP LOSS 10%.
+// Backtest (README / backtest/RISULTATI_AROON_EMA.md): paniere paniere.json, 1d, 11/2020-10/2026, 1/N del capitale
+// per moneta, costo 0,12% per cambio di posizione: +986%, drawdown -34,9%, Calmar 1,38.
+//
+// REGOLE (valutate alla chiusura della candela)
+//   Ingresso LONG : Aroon rialzista (Aroon Up > Aroon Down, periodo 60) E la candela chiude sopra la EMA 90,
+//                   alla PRIMA candela che soddisfa la condizione (la candela precedente non la soddisfaceva).
+//   Filtro BTC    : si entra solo se BTC chiude sopra la propria EMA (180, come la strategia Bollinger);
+//                   se BTC scende sotto la sua EMA le posizioni aperte vengono chiuse alla chiusura.
+//   Uscita        : la candela chiude sotto la EMA 90.
+//   Stop loss     : % sul prezzo d'ingresso (predefinito 10), eseguito dentro la candela. Dopo uno stop si rientra
+//                   solo con un nuovo segnale (nuova "prima candela" sopra EMA con Aroon rialzista).
+//   Short         : non previsto (nei backtest non aggiunge valore).
+//
+// DIFFERENZA RISPETTO AL BACKTEST: il backtest entra all'apertura della candela successiva al segnale; qui si entra
+// alla chiusura della candela del segnale (process_orders_on_close = true), coerente con la strategia Bollinger e con
+// gli alert. Sulle crypto (mercato continuo) la differenza e' trascurabile.
+//
+// AUTOMAZIONE: crea un alert sulla strategia e nel campo "Messaggio" scrivi soltanto:
+//     {{strategy.order.alert_message}}
+//
+// NOTA: questo script non e' stato compilato su TradingView dall'autore;
+// al primo caricamento controlla che non ci siano errori nella console di Pine.
+
+strategy("Aroon EMA 1D (filtro BTC, stop 10%)", overlay = true,
+     process_orders_on_close = true,
+     pyramiding = 0,
+     initial_capital = 10000,
+     default_qty_type = strategy.percent_of_equity,
+     default_qty_value = 100,
+     commission_type = strategy.commission.percent,
+     commission_value = 0.12,
+     slippage = 0,
+     max_labels_count = 500)
+
+// ───────── Impostazioni ─────────
+grpA = "Aroon + EMA"
+aroonLen = input.int(60, "Periodo Aroon", minval = 2, group = grpA)
+emaLen   = input.int(90, "Periodo EMA", minval = 1, group = grpA)
+stopPct  = input.float(10.0, "Stop loss % (0 = nessuno)", minval = 0.0, step = 0.5, group = grpA)
+
+grpF = "Filtro di mercato (BTC)"
+regimeOn   = input.bool(true, "Opera solo se BTC e' sopra la sua EMA", group = grpF)
+regimeSym  = input.symbol("BINANCE:BTCUSDT", "Simbolo del filtro", group = grpF)
+regimeEma  = input.int(180, "Periodo EMA di BTC", minval = 1, group = grpF)
+regimeExit = input.bool(true, "Chiudi le posizioni se il filtro si spegne", group = grpF)
+
+grpT = "Periodo di test"
+useWindow = input.bool(false, "Limita il periodo", group = grpT)
+startTime = input.time(timestamp("2020-11-01T00:00:00"), "Dal", group = grpT)
+endTime   = input.time(timestamp("2099-12-31T00:00:00"), "Al", group = grpT)
+
+grpW = "Bot / Webhook"
+botId = input.string("aroon-ema-1d", "ID strategia nel messaggio", group = grpW)
+
+// ───────── Calcoli ─────────
+inWindow = not useWindow or (time >= startTime and time <= endTime)
+pos      = strategy.position_size
+
+// Aroon: finestra di aroonLen + 1 candele, come nel backtest
+aroonUp = 100 * (aroonLen + ta.highestbars(high, aroonLen + 1)) / aroonLen
+aroonDn = 100 * (aroonLen + ta.lowestbars(low, aroonLen + 1)) / aroonLen
+emaV    = ta.ema(close, emaLen)
+
+// Filtro: BTC sopra la propria EMA (stesso timeframe del grafico)
+btcOk    = request.security(regimeSym, timeframe.period, close > ta.ema(close, regimeEma), lookahead = barmerge.lookahead_off)
+regimeUp = not regimeOn or btcOk
+
+// Prima candela che chiude sopra l'EMA con Aroon rialzista
+condLong  = aroonUp > aroonDn and close > emaV and bar_index >= math.max(aroonLen, emaLen)
+firstLong = condLong and not condLong[1]
+
+f_px(float v) => str.tostring(v, format.mintick)
+
+f_msg(string action, float sl) =>
+    '{"id":"' + botId + '","azione":"' + action + '","simbolo":"' + syminfo.ticker +
+     '","exchange":"' + syminfo.prefix + '","prezzo":"{{strategy.order.price}}","quantita":"{{strategy.order.contracts}}"' +
+     ',"sl":"' + (na(sl) ? "0" : f_px(sl)) + '","tempo":"{{timenow}}"}'
+
+longEntry  = pos == 0 and inWindow and firstLong and regimeUp
+slLongNew  = stopPct > 0 ? close * (1 - stopPct / 100) : na
+
+if longEntry
+    strategy.entry("Long", strategy.long, alert_message = f_msg("apri_long", slLongNew))
+
+// Stop loss: sul prezzo d'ingresso, eseguito dentro la candela
+if stopPct > 0 and (longEntry or pos > 0)
+    float slL = longEntry ? slLongNew : strategy.position_avg_price * (1 - stopPct / 100)
+    strategy.exit("Long SL", from_entry = "Long", stop = slL, comment_loss = "SL",
+         alert_loss = f_msg("chiudi_long_sl", slL))
+
+// Uscita alla chiusura: sotto la EMA
+if pos > 0 and close < emaV
+    strategy.close("Long", comment = "EMA", alert_message = f_msg("chiudi_long_ema", float(na)))
+
+// Uscita alla chiusura: filtro BTC spento
+if regimeOn and regimeExit and pos > 0 and not regimeUp
+    strategy.close("Long", comment = "Filtro BTC", alert_message = f_msg("chiudi_long_filtro", float(na)))
+
+// ───────── Grafica ─────────
+plot(emaV, "EMA", color = color.new(color.orange, 0), linewidth = 2)
+bgcolor(regimeOn and not btcOk ? color.new(color.red, 92) : na, title = "Filtro BTC spento")
+plotshape(longEntry, "Ingresso", shape.triangleup, location.belowbar, color.green, size = size.small)

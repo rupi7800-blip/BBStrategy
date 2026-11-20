@@ -54,3 +54,15 @@ La zona dei parametri è stabile (variando SMA 30/50, bande 2,5–3,5, stop 7–
 - **Poca storia.** Sei anni, con un solo ciclo completo di mercato. Nei test su 1, 5, 15 e 30 minuti la strategia non funziona (costi troppo alti rispetto ai movimenti).
 - **Esecuzione simulata.** Gli ingressi avvengono alla chiusura; le uscite alla SMA sono valutate sulla chiusura; gli stop sono simulati dentro la candela ma senza ordine intrabar tra stop e rientro. Il confronto è sensibile a commissioni e slippage reali.
 - **Verifica dei calcoli.** Il motore a barre chiuse è stato riscritto da zero in modo indipendente da un sotto-agente: gli scarti sulle serie di rendimento sono zero. Il motore usato per i profili con filtro BTC (stop dentro la candela) non è stato controllato da un sotto-agente: riproduce però il riferimento senza filtro (+107% / −16% nel periodo di verifica), uguale ai test già verificati.
+
+## Strategia Aroon + EMA
+
+Seconda strategia sullo stesso paniere: Aroon 60 e EMA 90, solo long, con filtro BTC sopra la propria EMA 180.
+Ingresso alla prima candela che chiude sopra la EMA con Aroon rialzista; uscita alla chiusura sotto la EMA o se il filtro BTC si spegne.
+Due sistemi (script Pine, stessa logica, impostazioni diverse):
+
+- `aroon_ema_1d_stop.pine`: timeframe **1d**, stop loss 10% (rendimento +986% su 6 anni, drawdown −34,9%, Calmar 1,38).
+- `aroon_ema_4h_nostop.pine`: timeframe **4h**, senza stop (rendimento +758%, drawdown −33,3%, Calmar 1,28; ultimi 3 anni +120%).
+
+Backtest e dettagli: `backtest/RISULTATI_AROON_EMA.md`, script `backtest/aroon_ema.py` e `backtest/aroon_ema_equity.py`.
+> Come per l'altro script, i Pine non sono stati compilati su TradingView dall'autore: al primo caricamento controlla la console di Pine.
