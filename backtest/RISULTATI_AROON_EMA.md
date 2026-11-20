@@ -7,27 +7,33 @@ Paniere: `paniere.json` (18 coppie USDT, Binance). Dati: candele spot dal 01/202
 - short: Aroon ribassista e prima candela che chiude sotto EMA 90.
 
 **Uscite a confronto**: `ema` (chiusura oltre EMA nel verso opposto), `aroon` (inversione di Aroon), `time` (14 barre).
-Costi 0,10% per lato (commissione 0,05% + slippage 0,05%), una posizione alla volta per moneta. Totale e drawdown sono somme di rendimenti % per operazione (senza capitale né dimensionamento).
+Costi 0,12% per cambio di posizione (commissione 0,10% + slippage 0,02%, come README Bollinger), una posizione alla volta per moneta. Totale e drawdown sono somme di rendimenti % per operazione (senza capitale né dimensionamento).
 
 Tabella completa (long/short, prima/seconda metà): `risultati_aroon_ema.csv`. Rilancio: `python backtest/aroon_ema.py`.
 
-## Sintesi (long + short)
+## Sintesi (long + short, tutto il periodo)
 
-| TF | Uscita | N op. | % vincenti | Medio/op. | Mediana | Sharpe | t-stat |
-|---|---|---|---|---|---|---|---|
-| 1d | ema | 1042 | 25% | +8,40% | -3,58% | 1,45 | 3,7 |
-| 1d | aroon | 490 | 42% | +9,90% | -4,62% | 1,03 | 2,7 |
-| 1d | time | 797 | 51% | +2,25% | +0,32% | 1,01 | 2,6 |
-| 4h | ema | 6900 | 23% | +0,91% | -1,48% | 1,59 | 4,2 |
-| 4h | aroon | 3074 | 38% | +0,67% | -1,97% | 0,71 | 1,9 |
-| 4h | time | 5099 | 49% | +0,15% | -0,11% | 0,48 | 1,3 |
-| 1h | ema | 29872 | 20% | +0,01% | -0,81% | 0,11 | 0,3 |
-| 1h | aroon | 12509 | 36% | +0,10% | -1,12% | 0,47 | 1,2 |
-| 1h | time | 21052 | 46% | -0,10% | -0,21% | -1,45 | -3,8 |
+Rapporto = totale % / |drawdown massimo %|, entrambi come somma dei rendimenti per operazione.
+
+| TF | Uscita | N op. | % vincenti | Medio/op. | Totale % | Max DD % | Rapporto | Sharpe |
+|---|---|---|---|---|---|---|---|---|
+| 1d | ema | 1042 | 25% | +8.36% | 8,716 | -848 | 10.3 | 1.44 |
+| 1d | aroon | 490 | 42% | +9.86% | 4,833 | -855 | 5.7 | 1.03 |
+| 1d | time | 797 | 50% | +2.21% | 1,763 | -446 | 3.9 | 0.99 |
+| 4h | ema | 6900 | 22% | +0.87% | 6,000 | -567 | 10.6 | 1.52 |
+| 4h | aroon | 3074 | 38% | +0.63% | 1,923 | -1,067 | 1.8 | 0.67 |
+| 4h | time | 5099 | 49% | +0.11% | 572 | -1,182 | 0.5 | 0.36 |
+| 1h | ema | 29872 | 19% | -0.03% | -878 | -3,842 | -0.2 | -0.30 |
+| 1h | aroon | 12509 | 35% | +0.06% | 714 | -1,794 | 0.4 | 0.27 |
+| 1h | time | 21052 | 45% | -0.14% | -3,013 | -3,530 | -0.9 | -2.01 |
+
+## Scelta: 1d, uscita sotto EMA 90, solo long
+Miglior rapporto profitto/drawdown di tutte le combinazioni (con il solo lato long): totale 8,678%, drawdown -707%, **rapporto 12.3**, 540 operazioni, medio +16.1%, Sharpe 1.48, t-stat 3.8. Seconda: 4h/ema long+short (10,6). Gli short non aggiungono valore (1d/ema: rapporto 10,3 con short contro 12,3 solo long).
+- Prima metà del periodo: rapporto 8.3 (medio +13.5%); seconda metà: 2.4 (medio +3.3%), vedi  (le due metà sono su tutte le direzioni).
 
 ## Letture
-- Il vantaggio è tutto nel **lato long** sui timeframe lenti: 1d/ema long +16,1% a operazione (t 3,8); gli short sono nulli o negativi su ogni timeframe.
-- Profilo da trend following: vince 21-25% delle volte, mediana negativa, pochi grandi rialzi.
-- Il vantaggio si riduce nel tempo: 1d/ema passa da +13,5% (prima metà) a +3,3% (seconda metà), restando positivo.
+- Il vantaggio è nel lato long sui timeframe lenti; gli short sono nulli o negativi.
+- Profilo da trend following: vince circa il 22-25% delle volte, mediana negativa, pochi grandi rialzi.
+- Il vantaggio si riduce nella seconda metà del periodo (il rialzo 2020-21 pesa molto), pur restando positivo.
 - L'1h non è utilizzabile; l'uscita a tempo è la meno interessante.
-- Limiti: operazioni di monete diverse sovrapposte (t-stat ottimistico), storico non uniforme (ARB, OP, SUI recenti), costi diversi dal README della strategia Bollinger (0,12% per cambio di posizione).
+- Limiti: totale e drawdown sono somme di rendimenti, non un'equity con capitale; operazioni di monete diverse sovrapposte (t-stat ottimistico); storico non uniforme (ARB, OP, SUI recenti).

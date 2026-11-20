@@ -8,7 +8,7 @@ Uscite a confronto:
   ema   : long chiuso alla prima chiusura sotto EMA (short: sopra EMA)
   aroon : chiusura quando Aroon cambia direzione
   time  : uscita a tempo dopo TIME_BARS barre
-Costi: 5 bps commissione + 5 bps slippage per lato. Una posizione alla volta per simbolo.
+Costi: 0,12% per lato (commissione 0,10% + slippage 0,02%). Una posizione alla volta per simbolo.
 Uso: python backtest/aroon_ema.py [cache_dir]
 """
 from __future__ import annotations
@@ -24,7 +24,7 @@ import pandas as pd
 import requests
 
 AROON_N, EMA_N, TIME_BARS = 60, 90, 14
-COST = (5.0 + 5.0) / 1e4  # per lato
+COST = 0.12 / 100  # 0,12% per ogni cambio di posizione (come README Bollinger): commissione 0,10% + slippage 0,02%
 START = "2020-01-01"
 HOST = "https://data-api.binance.vision/api/v3/klines"
 ROOT = Path(__file__).resolve().parents[1]
