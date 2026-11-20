@@ -97,8 +97,8 @@ emaT   = ta.ema(src, emaLen)
 
 // Filtro di mercato: BTC sopra la propria EMA (stesso periodo della EMA di trend), stesso timeframe del grafico
 btcOk    = request.security(regimeSym, timeframe.period, close > ta.ema(close, emaLen), lookahead = barmerge.lookahead_off)
-regimeUp = not regimeOn or nz(btcOk, false)
-regimeDn = not regimeOn or not nz(btcOk, true)
+regimeUp = not regimeOn or btcOk
+regimeDn = not regimeOn or not btcOk
 
 // Bande della modalità Originale
 basisO = ta.sma(src, length)
@@ -143,15 +143,15 @@ if not isOrig and stopPct > 0
 
 // Uscita alla chiusura quando il prezzo torna oltre la SMA
 if not isOrig and pos > 0 and src < basisB
-    strategy.close("BO Long", comment = "SMA", alert_message = f_msgB("chiudi_long_sma", na))
+    strategy.close("BO Long", comment = "SMA", alert_message = f_msgB("chiudi_long_sma", float(na)))
 if not isOrig and pos < 0 and src > basisB
-    strategy.close("BO Short", comment = "SMA", alert_message = f_msgB("chiudi_short_sma", na))
+    strategy.close("BO Short", comment = "SMA", alert_message = f_msgB("chiudi_short_sma", float(na)))
 
 // Uscita alla chiusura quando il filtro di mercato si spegne (BTC sotto la sua EMA)
 if not isOrig and regimeOn and regimeExit and pos > 0 and not regimeUp
-    strategy.close("BO Long", comment = "Filtro BTC", alert_message = f_msgB("chiudi_long_filtro", na))
+    strategy.close("BO Long", comment = "Filtro BTC", alert_message = f_msgB("chiudi_long_filtro", float(na)))
 if not isOrig and regimeOn and regimeExit and pos < 0 and not regimeDn
-    strategy.close("BO Short", comment = "Filtro BTC", alert_message = f_msgB("chiudi_short_filtro", na))
+    strategy.close("BO Short", comment = "Filtro BTC", alert_message = f_msgB("chiudi_short_filtro", float(na)))
 
 // ═════════════════════ MODALITÀ ORIGINALE ═════════════════════
 isGreen = close > open
