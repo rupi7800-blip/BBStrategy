@@ -59,9 +59,10 @@ La zona dei parametri è stabile (variando SMA 30/50, bande 2,5–3,5, stop 7–
 
 Seconda strategia sullo stesso paniere: Aroon 60 e EMA 90, solo long, con filtro BTC sopra la propria EMA 180.
 Ingresso alla prima candela che chiude sopra la EMA con Aroon rialzista; uscita alla chiusura sotto la EMA o se il filtro BTC si spegne.
-Due sistemi (script Pine, stessa logica, impostazioni diverse):
+Tre sistemi (script Pine, stessa logica, impostazioni diverse):
 
 - `aroon_ema_1d_stop.pine`: timeframe **1d**, stop loss 10% (rendimento +986% su 6 anni, drawdown −34,9%, Calmar 1,38).
+- `aroon_ema_1d_nostop.pine`: timeframe **1d**, senza stop (rendimento +1.305%, drawdown −42,2%, Calmar 1,30; ultimi 3 anni +78%).
 - `aroon_ema_4h_nostop.pine`: timeframe **4h**, senza stop (rendimento +758%, drawdown −33,3%, Calmar 1,28; ultimi 3 anni +120%).
 
 Backtest e dettagli: `backtest/RISULTATI_AROON_EMA.md`, script `backtest/aroon_ema.py` e `backtest/aroon_ema_equity.py`.
