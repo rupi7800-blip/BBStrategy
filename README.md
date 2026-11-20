@@ -24,7 +24,7 @@ Dati: candele Binance spot, 11/2020–10/2026 (17 monete con storia completa; pe
 | Configurazione | 17 monete, 6 anni | 17 monete, ultimi 3 anni | 15 monete (senza ATOM e INJ), ultimi 3 anni |
 |---|---|---|---|
 | SMA 50, bande 3, stop 5% | +210% / −21% | +76% / −13% | +103% / −13% |
-| SMA 50, bande 3, stop 10% (predefinita) | +359% / −23% | +83% / −16% | +107% / −16% |
+| SMA 50, bande 3, stop 10% (senza filtro BTC) | +359% / −23% | +83% / −16% | +107% / −16% |
 | SMA 20, bande 2,5, stop 5% | +187% / −21% | +47% / −21% | +62% / −20% |
 | SMA 20, bande 3, senza stop | +265% / −17% | +45% / −17% | +52% / −17% |
 
@@ -53,4 +53,4 @@ La zona dei parametri è stabile (variando SMA 30/50, bande 2,5–3,5, stop 7–
 - **Survivorship bias.** Il paniere è quello esistente oggi: monete fallite o delistate nel 2021–2024 non ci sono.
 - **Poca storia.** Sei anni, con un solo ciclo completo di mercato. Nei test su 1, 5, 15 e 30 minuti la strategia non funziona (costi troppo alti rispetto ai movimenti).
 - **Esecuzione simulata.** Gli ingressi avvengono alla chiusura; le uscite alla SMA sono valutate sulla chiusura; gli stop sono simulati dentro la candela ma senza ordine intrabar tra stop e rientro. Il confronto è sensibile a commissioni e slippage reali.
-- **Verifica dei calcoli.** Il motore a barre chiuse è stato riscritto da zero in modo indipendente da un sotto-agente: gli scarti sulle serie di rendimento sono zero.
+- **Verifica dei calcoli.** Il motore a barre chiuse è stato riscritto da zero in modo indipendente da un sotto-agente: gli scarti sulle serie di rendimento sono zero. Il motore usato per i profili con filtro BTC (stop dentro la candela) non è stato controllato da un sotto-agente: riproduce però il riferimento senza filtro (+107% / −16% nel periodo di verifica), uguale ai test già verificati.
