@@ -54,3 +54,17 @@ Solo long, uscita sotto EMA 90, ingresso Aroon 60 + EMA 90. Portafoglio a 1/N de
 - Rispetto al buy & hold il drawdown si dimezza circa (−33/−44% contro −75%), ma resta più alto del −21% del breakout Bollinger: qui non c'è uno stop loss.
 - Confronto sul rapporto rendimento/drawdown composto (Calmar): 1d con filtro 1,30 e 4h con filtro 1,28, praticamente alla pari; il 4h ha il drawdown minore e la verifica migliore, l'1d ha meno operazioni (508 contro 2.775, quindi costi minori).
 - Limiti: nessun stop loss, un solo parametro del filtro (EMA 180, non ottimizzata), periodo dominato dal rialzo 2020-21, ARB/OP/SUI con poca storia.
+
+### Con stop loss 10%
+Stop al 10% dal prezzo d'ingresso, valutato dentro la candela (uscita al livello, o all'apertura se la candela apre sotto). Dopo uno stop si rientra solo con un nuovo segnale.
+
+| TF | Variante | Rend. 6 anni | Max DD | Calmar | Sharpe | Selezione | Verifica |
+|---|---|---|---|---|---|---|---|
+| 1d | filtro BTC, senza stop | +1.305% | −42,2% | 1,30 | 1,40 | +687% | +78% |
+| 1d | filtro BTC, stop 10% | +986% | **−34,9%** | **1,38** | 1,44 | +507% | +79% |
+| 1d | senza filtro, stop 10% | +930% | −37,8% | 1,24 | 1,28 | +399% | +107% |
+| 4h | filtro BTC, senza stop | +758% | −33,3% | 1,28 | 1,28 | +290% | +120% |
+| 4h | filtro BTC, stop 10% | +694% | −33,6% | 1,21 | 1,25 | +262% | +120% |
+
+- Sull'1d lo stop abbassa il drawdown di circa 7 punti (−42% → −35%) e migliora Calmar e Sharpe, ma costa parte del rendimento (+1.305% → +986%).
+- Sul 4h lo stop non serve: il drawdown resta uguale (−33%) e il rendimento cala leggermente. Con candele da 4 ore l'uscita sotto EMA scatta già prima che il 10% venga toccato.
