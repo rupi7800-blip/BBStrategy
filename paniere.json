@@ -1,0 +1,9 @@
+{
+ "_nota": "Paniere di test per la strategia SMA + Bande (coppie USDT su Binance). Derivato dall'universo del progetto AHA (config/universe.json), che NON e' stato modificato. Escluse ATOM e INJ: negative nel periodo di selezione 11/2020-10/2023 e senza recupero nel periodo di verifica 11/2023-10/2026. ARB, OP e SUI hanno meno di 3 anni di storia e non sono valutabili con quel criterio: sono mantenute.",
+ "monete": [
+  "BTCUSDT", "ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "ADAUSDT",
+  "DOGEUSDT", "AVAXUSDT", "LINKUSDT", "DOTUSDT", "TRXUSDT", "LTCUSDT",
+  "NEARUSDT", "UNIUSDT", "AAVEUSDT", "ARBUSDT", "OPUSDT", "SUIUSDT"
+ ],
+ "escluse": ["ATOMUSDT", "INJUSDT"]
+}
