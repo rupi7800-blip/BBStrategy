@@ -1,34 +1,39 @@
 //@version=6
-// Strategia "SMA + Bande" con direzione scelta dall'utente (Trend Long / Trend Short).
+// Strategia "SMA + Bande" con due modalità selezionabili.
 //
+// ───────────────────────── MODALITÀ "Breakout (consigliata)" ─────────────────────────
+// Segue il trend. Predefinita perché è quella che ha retto meglio nei backtest (vedi README.md).
+//   LONG   1. La candela chiude sopra la banda superiore E sopra la EMA di trend (180)  -> apertura LONG alla chiusura
+//          2. Uscita: la candela chiude sotto la SMA                                    -> chiusura alla chiusura
+//          3. Stop loss in percentuale sul prezzo d'ingresso (predefinito 10%), eseguito dentro la candela
+//   SHORT  (disattivato di default: nei test peggiora il risultato)
+//          1. La candela chiude sotto la banda inferiore E sotto la EMA di trend        -> apertura SHORT alla chiusura
+//          2. Uscita: la candela chiude sopra la SMA, oppure stop loss in percentuale
+//   Parametri di partenza dei test: SMA 50, bande 3,0 deviazioni standard, EMA 180, timeframe 4h.
+//
+// ───────────────────────── MODALITÀ "Originale (armata)" ─────────────────────────
+// La strategia creata inizialmente (invariata), con direzione scelta dall'utente.
 // TREND LONG
 //   1. Una candela rossa chiude sotto la SMA      -> segnale armato
 //   2. Una candela verde successiva chiude sopra   -> apertura LONG (alla chiusura)
 //   3. Il prezzo tocca la banda superiore          -> uscita in Take Profit al prezzo della banda
 //   4. Il prezzo tocca la banda inferiore          -> uscita in Stop Loss al prezzo della banda
-//
 // TREND SHORT
 //   1. Una candela verde chiude sopra la SMA       -> segnale armato
 //   2. Una candela rossa successiva chiude sotto   -> apertura SHORT (alla chiusura)
 //   3. Il prezzo tocca la banda inferiore          -> uscita in Take Profit al prezzo della banda
 //   4. Il prezzo tocca la banda superiore          -> uscita in Stop Loss al prezzo della banda
 //
-// INGRESSI: il colore della candela si conosce solo alla chiusura, quindi si entra
-// al prezzo di chiusura della candela di conferma (process_orders_on_close = true).
-//
-// USCITE: a ogni candela chiusa si piazzano un ordine limite (TP) e uno stop (SL)
-// ai livelli delle bande di quella candela; restano validi per tutta la candela
-// successiva e vengono eseguiti nel momento in cui il prezzo li tocca, con qualsiasi
-// colore di candela. Se il prezzo apre già oltre la banda (gap) l'uscita avviene
-// all'apertura. Se nella stessa candela vengono toccate entrambe le bande, l'ordine
-// di esecuzione lo decide il simulatore di TradingView (in base a apertura/massimo/minimo).
+// INGRESSI: il colore e la chiusura di una candela si conoscono solo alla chiusura, quindi si entra
+// al prezzo di chiusura (process_orders_on_close = true).
 //
 // AUTOMAZIONE: crea un alert sulla strategia e nel campo "Messaggio" scrivi soltanto:
 //     {{strategy.order.alert_message}}
-// Il bot riceve un JSON per ogni ingresso e ogni uscita. Se "Invia livelli aggiornati"
-// è attivo, a ogni candela chiusa con posizione aperta arriva anche il messaggio
-// "aggiorna_uscite" con i nuovi livelli TP/SL, così il bot sposta gli ordini sulla
-// piattaforma come fa la strategia.
+// Il bot riceve un JSON per ogni ingresso e ogni uscita. Nella modalità Originale, se
+// "Invia livelli aggiornati" è attivo, arriva anche il messaggio "aggiorna_uscite" con i livelli TP/SL.
+//
+// NOTA: questo script non è stato compilato su TradingView dall'autore della modifica;
+// al primo caricamento controlla che non ci siano errori nella console di Pine.
 
 strategy("SMA Bande Trend", overlay = true,
      process_orders_on_close = true,
@@ -43,11 +48,21 @@ strategy("SMA Bande Trend", overlay = true,
      max_lines_count = 500)
 
 // ───────── Impostazioni ─────────
-grpS = "Strategia"
+grpM = "Modalità"
+modo = input.string("Breakout (consigliata)", "Strategia", options = ["Breakout (consigliata)", "Originale (armata)"], group = grpM)
+src  = input.source(close, "Sorgente", group = grpM)
+
+grpB = "Breakout"
+lenB     = input.int(50, "Periodo SMA", minval = 1, group = grpB)
+multB    = input.float(3.0, "Ampiezza bande (deviazioni standard)", minval = 0.1, step = 0.1, group = grpB)
+emaLen   = input.int(180, "Periodo EMA di trend", minval = 1, group = grpB)
+stopPct  = input.float(10.0, "Stop loss % (0 = nessuno)", minval = 0.0, step = 0.5, group = grpB)
+allowShort = input.bool(false, "Abilita short sotto la EMA (sconsigliato)", group = grpB)
+
+grpS = "Originale"
 trendMode = input.string("Trend Long", "Direzione", options = ["Trend Long", "Trend Short"], group = grpS)
 length    = input.int(20, "Periodo SMA", minval = 1, group = grpS)
 mult      = input.float(2.0, "Ampiezza bande (deviazioni standard)", minval = 0.1, step = 0.1, group = grpS)
-src       = input.source(close, "Sorgente", group = grpS)
 
 grpT = "Periodo di test"
 useWindow = input.bool(false, "Limita il periodo", group = grpT)
@@ -56,50 +71,97 @@ endTime   = input.time(timestamp("2099-12-31T00:00:00"), "Al", group = grpT)
 
 grpG = "Grafica"
 showBands = input.bool(true, "Mostra bande", group = grpG)
-showArmed = input.bool(true, "Mostra segnale armato", group = grpG)
+showArmed = input.bool(true, "Mostra segnale armato (solo Originale)", group = grpG)
 
-grpB = "Bot / Webhook"
-botId      = input.string("sma-bande", "ID strategia nel messaggio", group = grpB)
-sendLevels = input.bool(true, "Invia livelli aggiornati a ogni candela", group = grpB)
+grpW = "Bot / Webhook"
+botId      = input.string("sma-bande", "ID strategia nel messaggio", group = grpW)
+sendLevels = input.bool(true, "Invia livelli aggiornati a ogni candela (solo Originale)", group = grpW)
 
 // ───────── Calcoli ─────────
-basis = ta.sma(src, length)
-dev   = mult * ta.stdev(src, length)
-upper = basis + dev
-lower = basis - dev
-
-isGreen  = close > open
-isRed    = close < open
-isLong   = trendMode == "Trend Long"
+isOrig   = modo == "Originale (armata)"
 inWindow = not useWindow or (time >= startTime and time <= endTime)
+pos      = strategy.position_size   // già aggiornata se un'uscita è avvenuta in questa candela
 
-pos = strategy.position_size   // già aggiornata se un'uscita è avvenuta in questa candela
+// Bande della modalità Breakout
+basisB = ta.sma(src, lenB)
+devB   = multB * ta.stdev(src, lenB)
+upperB = basisB + devB
+lowerB = basisB - devB
+emaT   = ta.ema(src, emaLen)
 
-// Livelli di uscita per la candela successiva
-tpLevel = isLong ? upper : lower
-slLevel = isLong ? lower : upper
+// Bande della modalità Originale
+basisO = ta.sma(src, length)
+devO   = mult * ta.stdev(src, length)
+upperO = basisO + devO
+lowerO = basisO - devO
 
-// Preparazione e innesco dell'ingresso
-armCond  = isLong ? (isRed and close < basis)   : (isGreen and close > basis)
-trigCond = isLong ? (isGreen and close > basis) : (isRed and close < basis)
+// Bande mostrate a grafico
+basis = isOrig ? basisO : basisB
+upper = isOrig ? upperO : upperB
+lower = isOrig ? lowerO : lowerB
+
+f_px(float v) => str.tostring(v, format.mintick)
+
+// ═════════════════════ MODALITÀ BREAKOUT ═════════════════════
+f_msgB(string action, float sl) =>
+    '{"id":"' + botId + '","azione":"' + action + '","simbolo":"' + syminfo.ticker +
+     '","exchange":"' + syminfo.prefix + '","prezzo":"{{strategy.order.price}}","quantita":"{{strategy.order.contracts}}"' +
+     ',"sl":"' + (na(sl) ? "0" : f_px(sl)) + '","tempo":"{{timenow}}"}'
+
+longEntryB  = not isOrig and pos == 0 and inWindow and src > upperB and src > emaT
+shortEntryB = not isOrig and allowShort and pos == 0 and inWindow and src < lowerB and src < emaT
+
+slLongNew  = stopPct > 0 ? close * (1 - stopPct / 100) : na
+slShortNew = stopPct > 0 ? close * (1 + stopPct / 100) : na
+
+if longEntryB
+    strategy.entry("BO Long", strategy.long, alert_message = f_msgB("apri_long", slLongNew))
+if shortEntryB
+    strategy.entry("BO Short", strategy.short, alert_message = f_msgB("apri_short", slShortNew))
+
+// Stop loss: calcolato sul prezzo d'ingresso, eseguito dentro la candela
+if not isOrig and stopPct > 0
+    if longEntryB or pos > 0
+        float slL = longEntryB ? slLongNew : strategy.position_avg_price * (1 - stopPct / 100)
+        strategy.exit("BO Long SL", from_entry = "BO Long", stop = slL, comment_loss = "SL",
+             alert_loss = f_msgB("chiudi_long_sl", slL))
+    if shortEntryB or pos < 0
+        float slS = shortEntryB ? slShortNew : strategy.position_avg_price * (1 + stopPct / 100)
+        strategy.exit("BO Short SL", from_entry = "BO Short", stop = slS, comment_loss = "SL",
+             alert_loss = f_msgB("chiudi_short_sl", slS))
+
+// Uscita alla chiusura quando il prezzo torna oltre la SMA
+if not isOrig and pos > 0 and src < basisB
+    strategy.close("BO Long", comment = "SMA", alert_message = f_msgB("chiudi_long_sma", na))
+if not isOrig and pos < 0 and src > basisB
+    strategy.close("BO Short", comment = "SMA", alert_message = f_msgB("chiudi_short_sma", na))
+
+// ═════════════════════ MODALITÀ ORIGINALE ═════════════════════
+isGreen = close > open
+isRed   = close < open
+isLong  = trendMode == "Trend Long"
+
+tpLevel = isLong ? upperO : lowerO
+slLevel = isLong ? lowerO : upperO
+
+armCond  = isLong ? (isRed and close < basisO)   : (isGreen and close > basisO)
+trigCond = isLong ? (isGreen and close > basisO) : (isRed and close < basisO)
 
 var bool armed = false
-enterNow = pos == 0 and armed and trigCond and inWindow
+enterNow = isOrig and pos == 0 and armed and trigCond and inWindow
 
 if enterNow
     armed := false
-else if armCond and inWindow and pos == 0
+else if isOrig and armCond and inWindow and pos == 0
     armed := true
-
-// ───────── Messaggi per il bot ─────────
-f_px(float v) => str.tostring(v, format.mintick)
+else if not isOrig
+    armed := false
 
 f_msg(string action) =>
     '{"id":"' + botId + '","azione":"' + action + '","simbolo":"' + syminfo.ticker +
      '","exchange":"' + syminfo.prefix + '","prezzo":"{{strategy.order.price}}","quantita":"{{strategy.order.contracts}}"' +
      ',"tp":"' + f_px(tpLevel) + '","sl":"' + f_px(slLevel) + '","tempo":"{{timenow}}"}'
 
-// ───────── Ordini ─────────
 entryId = isLong ? "Long" : "Short"
 
 if enterNow
@@ -107,14 +169,14 @@ if enterNow
          alert_message = f_msg(isLong ? "apri_long" : "apri_short"))
 
 // Ordini di uscita: ricalcolati a ogni candela con i livelli delle bande attuali
-if enterNow or pos != 0
+if isOrig and (enterNow or pos != 0)
     strategy.exit("Uscita", from_entry = entryId,
          limit = tpLevel, stop = slLevel,
          comment_profit = "TP", comment_loss = "SL",
          alert_profit = f_msg(isLong ? "chiudi_long_tp" : "chiudi_short_tp"),
          alert_loss   = f_msg(isLong ? "chiudi_long_sl" : "chiudi_short_sl"))
 
-if sendLevels and pos != 0
+if isOrig and sendLevels and pos != 0
     alert('{"id":"' + botId + '","azione":"aggiorna_uscite","simbolo":"' + syminfo.ticker +
          '","exchange":"' + syminfo.prefix + '","tp":"' + f_px(tpLevel) + '","sl":"' + f_px(slLevel) + '"}',
          alert.freq_once_per_bar_close)
@@ -124,13 +186,14 @@ pBasis = plot(basis, "SMA", color = color.orange, linewidth = 2)
 pUp    = plot(showBands ? upper : na, "Banda superiore", color = color.new(color.blue, 30))
 pLo    = plot(showBands ? lower : na, "Banda inferiore", color = color.new(color.blue, 30))
 fill(pUp, pLo, color = color.new(color.blue, 93), title = "Sfondo bande")
+plot(isOrig ? na : emaT, "EMA di trend", color = color.new(color.gray, 20), linewidth = 1)
 
 // Ingressi
-plotshape(enterNow and isLong,     "Ingresso Long",  shape.triangleup,   location.belowbar, color.lime,    size = size.small, text = "LONG",  textcolor = color.lime)
-plotshape(enterNow and not isLong, "Ingresso Short", shape.triangledown, location.abovebar, color.fuchsia, size = size.small, text = "SHORT", textcolor = color.fuchsia)
+plotshape(longEntryB or (enterNow and isLong),    "Ingresso Long",  shape.triangleup,   location.belowbar, color.lime,    size = size.small, text = "LONG",  textcolor = color.lime)
+plotshape(shortEntryB or (enterNow and not isLong), "Ingresso Short", shape.triangledown, location.abovebar, color.fuchsia, size = size.small, text = "SHORT", textcolor = color.fuchsia)
 
-// Segnale armato (in attesa della candela di conferma)
-plotshape(showArmed and armed and pos == 0, "Segnale armato", shape.circle,
+// Segnale armato (solo Originale)
+plotshape(isOrig and showArmed and armed and pos == 0, "Segnale armato", shape.circle,
      isLong ? location.belowbar : location.abovebar, color.new(color.gray, 20), size = size.tiny)
 
 // Uscite: etichetta con la percentuale del trade (verde = guadagno, rosso = perdita)
