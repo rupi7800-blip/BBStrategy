@@ -29,7 +29,7 @@ Rapporto = totale % / |drawdown massimo %|, entrambi come somma dei rendimenti p
 
 ## Scelta: 1d, uscita sotto EMA 90, solo long
 Miglior rapporto profitto/drawdown di tutte le combinazioni (con il solo lato long): totale 8,678%, drawdown -707%, **rapporto 12.3**, 540 operazioni, medio +16.1%, Sharpe 1.48, t-stat 3.8. Seconda: 4h/ema long+short (10,6). Gli short non aggiungono valore (1d/ema: rapporto 10,3 con short contro 12,3 solo long).
-- Prima metà del periodo: rapporto 8.3 (medio +13.5%); seconda metà: 2.4 (medio +3.3%), vedi  (le due metà sono su tutte le direzioni).
+- Stabilità (1d/ema, long+short): rapporto 8,3 nella prima metà del periodo (medio +13,5%), 2,4 nella seconda (medio +3,3%). Dettaglio in `risultati_aroon_ema.csv`.
 
 ## Letture
 - Il vantaggio è nel lato long sui timeframe lenti; gli short sono nulli o negativi.
