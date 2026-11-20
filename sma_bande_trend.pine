@@ -6,10 +6,13 @@
 //   LONG   1. La candela chiude sopra la banda superiore E sopra la EMA di trend (180)  -> apertura LONG alla chiusura
 //          2. Uscita: la candela chiude sotto la SMA                                    -> chiusura alla chiusura
 //          3. Stop loss in percentuale sul prezzo d'ingresso (predefinito 10%), eseguito dentro la candela
+//          4. FILTRO DI MERCATO (attivo di default, riduce il drawdown): si entra solo se BTC chiude sopra la propria
+//             EMA di trend; se BTC scende sotto la EMA le posizioni aperte vengono chiuse alla chiusura.
 //   SHORT  (disattivato di default: nei test peggiora il risultato)
 //          1. La candela chiude sotto la banda inferiore E sotto la EMA di trend        -> apertura SHORT alla chiusura
 //          2. Uscita: la candela chiude sopra la SMA, oppure stop loss in percentuale
 //   Parametri di partenza dei test: SMA 50, bande 3,0 deviazioni standard, EMA 180, timeframe 4h.
+//   Profili con drawdown piu' basso (rendimento minore): bande 3,5 (SMA 50) oppure bande 3,5 con SMA 30. Vedi README.md.
 //
 // ───────────────────────── MODALITÀ "Originale (armata)" ─────────────────────────
 // La strategia creata inizialmente (invariata), con direzione scelta dall'utente.
@@ -58,6 +61,9 @@ multB    = input.float(3.0, "Ampiezza bande (deviazioni standard)", minval = 0.1
 emaLen   = input.int(180, "Periodo EMA di trend", minval = 1, group = grpB)
 stopPct  = input.float(10.0, "Stop loss % (0 = nessuno)", minval = 0.0, step = 0.5, group = grpB)
 allowShort = input.bool(false, "Abilita short sotto la EMA (sconsigliato)", group = grpB)
+regimeOn   = input.bool(true, "Filtro di mercato: opera solo se BTC e' sopra la sua EMA", group = grpB)
+regimeSym  = input.symbol("BINANCE:BTCUSDT", "Simbolo del filtro di mercato", group = grpB)
+regimeExit = input.bool(true, "Chiudi le posizioni se il filtro di mercato si spegne", group = grpB)
 
 grpS = "Originale"
 trendMode = input.string("Trend Long", "Direzione", options = ["Trend Long", "Trend Short"], group = grpS)
@@ -89,6 +95,11 @@ upperB = basisB + devB
 lowerB = basisB - devB
 emaT   = ta.ema(src, emaLen)
 
+// Filtro di mercato: BTC sopra la propria EMA (stesso periodo della EMA di trend), stesso timeframe del grafico
+btcOk    = request.security(regimeSym, timeframe.period, close > ta.ema(close, emaLen), lookahead = barmerge.lookahead_off)
+regimeUp = not regimeOn or nz(btcOk, false)
+regimeDn = not regimeOn or not nz(btcOk, true)
+
 // Bande della modalità Originale
 basisO = ta.sma(src, length)
 devO   = mult * ta.stdev(src, length)
@@ -108,8 +119,8 @@ f_msgB(string action, float sl) =>
      '","exchange":"' + syminfo.prefix + '","prezzo":"{{strategy.order.price}}","quantita":"{{strategy.order.contracts}}"' +
      ',"sl":"' + (na(sl) ? "0" : f_px(sl)) + '","tempo":"{{timenow}}"}'
 
-longEntryB  = not isOrig and pos == 0 and inWindow and src > upperB and src > emaT
-shortEntryB = not isOrig and allowShort and pos == 0 and inWindow and src < lowerB and src < emaT
+longEntryB  = not isOrig and pos == 0 and inWindow and src > upperB and src > emaT and regimeUp
+shortEntryB = not isOrig and allowShort and pos == 0 and inWindow and src < lowerB and src < emaT and regimeDn
 
 slLongNew  = stopPct > 0 ? close * (1 - stopPct / 100) : na
 slShortNew = stopPct > 0 ? close * (1 + stopPct / 100) : na
@@ -135,6 +146,12 @@ if not isOrig and pos > 0 and src < basisB
     strategy.close("BO Long", comment = "SMA", alert_message = f_msgB("chiudi_long_sma", na))
 if not isOrig and pos < 0 and src > basisB
     strategy.close("BO Short", comment = "SMA", alert_message = f_msgB("chiudi_short_sma", na))
+
+// Uscita alla chiusura quando il filtro di mercato si spegne (BTC sotto la sua EMA)
+if not isOrig and regimeOn and regimeExit and pos > 0 and not regimeUp
+    strategy.close("BO Long", comment = "Filtro BTC", alert_message = f_msgB("chiudi_long_filtro", na))
+if not isOrig and regimeOn and regimeExit and pos < 0 and not regimeDn
+    strategy.close("BO Short", comment = "Filtro BTC", alert_message = f_msgB("chiudi_short_filtro", na))
 
 // ═════════════════════ MODALITÀ ORIGINALE ═════════════════════
 isGreen = close > open
