@@ -37,3 +37,20 @@ Miglior rapporto profitto/drawdown di tutte le combinazioni (con il solo lato lo
 - Il vantaggio si riduce nella seconda metà del periodo (il rialzo 2020-21 pesa molto), pur restando positivo.
 - L'1h non è utilizzabile; l'uscita a tempo è la meno interessante.
 - Limiti: totale e drawdown sono somme di rendimenti, non un'equity con capitale; operazioni di monete diverse sovrapposte (t-stat ottimistico); storico non uniforme (ARB, OP, SUI recenti).
+
+## Equity di portafoglio e filtro BTC (`aroon_ema_equity.py`)
+
+Solo long, uscita sotto EMA 90, ingresso Aroon 60 + EMA 90. Portafoglio a 1/N del capitale per moneta (N = 18, quota ferma in cassa), rendimento composto barra per barra, costo 0,12% per cambio di posizione, periodo 11/2020–10/2026. Filtro BTC: si entra solo se BTC chiude sopra la propria EMA 180 e si esce se scende sotto. Selezione = primi 3 anni, verifica = ultimi 3 (come README Bollinger). Tabella completa: `risultati_aroon_ema_equity.csv`.
+
+| TF | Variante | Rend. 6 anni | Max DD | Calmar | Sharpe | Selezione | Verifica |
+|---|---|---|---|---|---|---|---|
+| 1d | senza filtro | +1.060% | −44,6% | 1,12 | 1,21 | +464% | +106% |
+| 1d | con filtro BTC | +1.305% | −42,2% | 1,30 | 1,40 | +687% | +78% |
+| 4h | senza filtro | +642% | −54,5% | 0,72 | 1,07 | +401% | +48% |
+| 4h | con filtro BTC | **+758%** | **−33,3%** | **1,28** | 1,28 | +290% | **+120%** |
+| – | buy & hold 1/N | +710% (1d) | −74,6% | 0,55 | 0,84 | +550% | +25% |
+
+- Il filtro BTC riduce il drawdown su entrambi i timeframe e alza il rendimento sui 6 anni. Il miglioramento è netto sul 4h (drawdown −54% → −33%, verifica +48% → +120%); sull'1d è misto (la selezione migliora, la verifica peggiora da +106% a +78%).
+- Rispetto al buy & hold il drawdown si dimezza circa (−33/−44% contro −75%), ma resta più alto del −21% del breakout Bollinger: qui non c'è uno stop loss.
+- Confronto sul rapporto rendimento/drawdown composto (Calmar): 1d con filtro 1,30 e 4h con filtro 1,28, praticamente alla pari; il 4h ha il drawdown minore e la verifica migliore, l'1d ha meno operazioni (508 contro 2.775, quindi costi minori).
+- Limiti: nessun stop loss, un solo parametro del filtro (EMA 180, non ottimizzata), periodo dominato dal rialzo 2020-21, ARB/OP/SUI con poca storia.
